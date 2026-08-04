@@ -4,53 +4,46 @@
 数据来源: 中央气象台 (nmc.cn)
 用法:
     python3 main.py 北京
-    python3 main.py 深圳
-    python3 main.py 上海
+    python3 main.py --json 深圳
 """
 
+import argparse
+import json
 import sys
 
-from weather.client import NmcClient
 from weather.formatter import format_weather
+from weather.service import query_weather
 
 
-def main():
-    if len(sys.argv) < 2:
-        print("用法: python3 main.py <城市名称>")
-        print("示例: python3 main.py 北京")
-        sys.exit(1)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="查询中央气象台实时天气")
+    parser.add_argument("city", help="城市名称，例如：北京、深圳、成都市")
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="输出机器可读 JSON，便于 trip-planner 等上层应用调用",
+    )
+    return parser.parse_args()
 
-    city_name = sys.argv[1].strip()
-    client = NmcClient()
 
-    # 1. 查找城市 stationid
-    station_info = client.find_stationid(city_name)
-    if not station_info:
-        print(f"未找到城市: {city_name}")
-        print("提示: 请确认城市名称是否正确，目前支持全国主要城市")
-        sys.exit(1)
+def main() -> None:
+    args = parse_args()
 
-    stationid = station_info["code"]
-    matched_city = station_info.get("city", city_name)
-
-    # 2. 获取天气
     try:
-        weather_data = client.get_weather(stationid)
-    except Exception as e:
-        print(f"获取天气数据失败: {e}")
+        result = query_weather(args.city)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        print("提示: 请确认城市名称是否正确，目前支持全国主要城市", file=sys.stderr)
+        sys.exit(1)
+    except Exception as exc:
+        print(f"获取天气数据失败: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    # 3. 格式化输出
-    if weather_data.get("code") != 0:
-        print(f"接口返回错误: {weather_data.get('msg', '未知错误')}")
-        sys.exit(1)
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
 
-    data = weather_data.get("data", {})
-    if not data or not data.get("real"):
-        print(f"暂无 {matched_city} 的天气数据")
-        sys.exit(1)
-
-    print(format_weather(data))
+    print(format_weather(result["data"]))
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # real-time-weather
 
-实时天气查询工具，数据来源为中央气象台 (nmc.cn)。
+实时天气查询工具，数据来源为中央气象台 (nmc.cn)。可作为 CLI 使用，也可输出 JSON 供 trip-planner 等上层应用调用。
 
 ## 功能
 
@@ -8,6 +8,7 @@
 - 获取温度、湿度、风向、气压、降雨量等信息
 - 查看未来 7 天天气预报
 - 支持全国主要城市（含区县）
+- 支持机器可读 JSON 输出，便于服务间集成
 
 ## 安装
 
@@ -23,12 +24,27 @@ python3 main.py 深圳
 python3 main.py 成都市
 ```
 
+如需给 trip-planner 调用，建议使用 JSON 模式：
+
+```bash
+python3 main.py --json 北京
+```
+
+也可以在 Python 代码中直接调用：
+
+```python
+from weather.service import query_weather
+
+weather = query_weather("北京")
+print(weather["data"]["real"]["weather"]["temperature"])
+```
+
 ## 示例输出
 
-```
-══════════════════════════════════════
+```text
+════════════════════════════════════════
   北京 · 实时天气
-══════════════════════════════════════
+════════════════════════════════════════
   发布时间: 2026-08-04 23:15
   天气:     多云
   温度:     29.2℃  (体感 33.6℃)
@@ -42,23 +58,25 @@ python3 main.py 成都市
   08-04  夜间  雷阵雨  26℃  北风 微风
   08-05  白天  多云  35℃  南风 微风
   ...
-══════════════════════════════════════
+════════════════════════════════════════
 ```
 
 ## 项目结构
 
-```
+```text
 real-time-weather/
 ├── main.py              # CLI 入口
 ├── requirements.txt     # 依赖
 ├── weather/
 │   ├── __init__.py
 │   ├── client.py        # nmc.cn API 客户端
-│   └── formatter.py     # 天气数据格式化
+│   ├── formatter.py     # 天气数据格式化
+│   └── service.py       # 上层应用可调用的查询服务
 └── tests/
     ├── __init__.py
     ├── test_client.py    # 客户端测试 (mock)
-    └── test_formatter.py # 格式化测试
+    ├── test_formatter.py # 格式化测试
+    └── test_service.py   # 服务层测试
 ```
 
 ## 数据来源
