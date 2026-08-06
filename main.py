@@ -14,7 +14,7 @@ import json
 import sys
 from datetime import datetime
 
-from weather.formatter import format_weather, format_forecast_by_date
+from weather.formatter import format_weather, format_forecast_by_date, clean_value
 from weather.service import query_weather
 
 
@@ -121,16 +121,16 @@ def filter_forecast_json(data: dict, dates: list[str]) -> dict:
                 day_wind = d.get("day", {}).get("wind", {})
                 night_wind = d.get("night", {}).get("wind", {})
                 entry["day"] = {
-                    "weather": day_w.get("info") if day_w.get("info") != "9999" else None,
-                    "temperature": day_w.get("temperature") if day_w.get("temperature") != "9999" else None,
-                    "wind_direct": day_wind.get("direct") if day_wind.get("direct") != "9999" else None,
-                    "wind_power": day_wind.get("power") if day_wind.get("power") != "9999" else None,
+                    "weather": clean_value(day_w.get("info")),
+                    "temperature": clean_value(day_w.get("temperature")),
+                    "wind_direct": clean_value(day_wind.get("direct")),
+                    "wind_power": clean_value(day_wind.get("power")),
                 }
                 entry["night"] = {
-                    "weather": night_w.get("info") if night_w.get("info") != "9999" else None,
-                    "temperature": night_w.get("temperature") if night_w.get("temperature") != "9999" else None,
-                    "wind_direct": night_wind.get("direct") if night_wind.get("direct") != "9999" else None,
-                    "wind_power": night_wind.get("power") if night_wind.get("power") != "9999" else None,
+                    "weather": clean_value(night_w.get("info")),
+                    "temperature": clean_value(night_w.get("temperature")),
+                    "wind_direct": clean_value(night_wind.get("direct")),
+                    "wind_power": clean_value(night_wind.get("power")),
                 }
                 break
         results.append(entry)

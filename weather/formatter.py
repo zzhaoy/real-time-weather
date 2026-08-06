@@ -3,16 +3,30 @@
 NA = "N/A"
 
 
-def _clean(val, unit: str = "") -> str:
-    """清洗 API 返回值：9999 / 9999.0 / None / 空字符串 → N/A"""
+def clean_value(val):
+    """清洗 API 返回值，返回原始值或 None（用于 JSON 输出）
+
+    9999 / 9999.0 / None / 空字符串 → None
+    """
     if val is None or val == "":
-        return NA
+        return None
     try:
         if float(val) == 9999.0:
-            return NA
+            return None
     except (ValueError, TypeError):
         pass
-    return f"{val}{unit}"
+    return val
+
+
+def _clean(val, unit: str = "") -> str:
+    """清洗 API 返回值并格式化为字符串（用于文本输出）
+
+    9999 / 9999.0 / None / 空字符串 → N/A
+    """
+    cleaned = clean_value(val)
+    if cleaned is None:
+        return NA
+    return f"{cleaned}{unit}"
 
 
 def format_weather(weather_data: dict) -> str:
