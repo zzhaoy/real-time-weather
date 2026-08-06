@@ -62,7 +62,7 @@ def format_weather(weather_data: dict) -> str:
     sunset = _extract_time(sun.get("sunset", ""))
 
     wind_line = f"{wind_direct} {wind_power}"
-    if wind_speed != NA and wind_direct != NA:
+    if wind_speed != NA:
         wind_line += f"  {wind_speed}"
 
     lines = []

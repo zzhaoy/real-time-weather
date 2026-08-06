@@ -167,6 +167,18 @@ class TestFormatWeather(unittest.TestCase):
         self.assertIn("西南风", result)
         self.assertIn("1.3m/s", result)
 
+    def test_wind_speed_shown_without_direct(self):
+        """风向为 9999 但风速有值时，风速仍应显示"""
+        data = {
+            "real": {
+                "station": {"city": "测试"},
+                "weather": {"temperature": 20, "info": "晴"},
+                "wind": {"direct": "9999", "power": "微风", "speed": 2.5},
+            }
+        }
+        result = format_weather(data)
+        self.assertIn("2.5m/s", result)
+
     def test_output_contains_humidity(self):
         result = format_weather(self.sample_data)
         self.assertIn("74.0%", result)
