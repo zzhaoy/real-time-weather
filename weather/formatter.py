@@ -151,7 +151,6 @@ def format_forecast_by_date(weather_data: dict, city_name: str, dates: list[str]
     lines = [sep, f"  {city_name} · 指定日期天气查询", sep]
 
     matched_dates = set()
-    found_any = False
 
     for target_date in dates:
         found = False
@@ -159,7 +158,6 @@ def format_forecast_by_date(weather_data: dict, city_name: str, dates: list[str]
             if d.get("date") == target_date:
                 found = True
                 matched_dates.add(target_date)
-                found_any = True
                 date_short = _short_date(target_date)
                 lines.append("")
                 lines.append(f"  📅 {date_short}")
@@ -196,7 +194,7 @@ def format_forecast_by_date(weather_data: dict, city_name: str, dates: list[str]
             lines.append(f"  📅 {_short_date(target_date)}")
             lines.append(f"    ❌ 该日期不在预报范围内（预报仅支持未来7天）")
 
-    if not found_any and not matched_dates:
+    if not matched_dates:
         lines.append("")
         lines.append(f"  ⚠️ 查询的日期均不在预报范围内")
         # 显示可查询的日期范围
