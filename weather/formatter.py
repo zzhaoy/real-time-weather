@@ -129,3 +129,77 @@ def _short_date(date_str: str) -> str:
         return "??-??"
     parts = str(date_str).split("-")
     return "-".join(parts[1:]) if len(parts) >= 3 else str(date_str)
+
+
+def format_forecast_by_date(weather_data: dict, city_name: str, dates: list[str]) -> str:
+    """根据指定日期列表，从7天预报中筛选并格式化输出
+
+    参数:
+        weather_data: nmc.cn API 返回的天气数据
+        city_name: 城市名称
+        dates: 日期列表，格式 YYYY-MM-DD
+
+    返回: 格式化文本，包含匹配到的预报和未匹配的提示
+    """
+    predict = weather_data.get("predict", {})
+    detail = predict.get("detail", [])
+
+    sep = "═" * 40
+    lines = [sep, f"  {city_name} · 指定日期天气查询", sep]
+
+    matched_dates = set()
+    found_any = False
+
+    for target_date in dates:
+        found = False
+        for d in detail:
+            if d.get("date") == target_date:
+                found = True
+                matched_dates.add(target_date)
+                found_any = True
+                date_short = _short_date(target_date)
+                lines.append("")
+                lines.append(f"  📅 {date_short}")
+
+                day_weather = d.get("day", {})
+                night_weather = d.get("night", {})
+                day_info = day_weather.get("weather", {})
+                night_info = night_weather.get("weather", {})
+                day_wind = day_weather.get("wind", {})
+                night_wind = night_weather.get("wind", {})
+
+                # 白天
+                day_w = day_info.get("info", "")
+                if day_w and day_w != "9999":
+                    lines.append(
+                        f"    白天  {_clean(day_w)}  {_clean(day_info.get('temperature'), '℃')}  "
+                        f"{_clean(day_wind.get('direct'))} {_clean(day_wind.get('power'))}"
+                    )
+                # 夜间
+                night_w = night_info.get("info", "")
+                if night_w and night_w != "9999":
+                    lines.append(
+                        f"    夜间  {_clean(night_w)}  {_clean(night_info.get('temperature'), '℃')}  "
+                        f"{_clean(night_wind.get('direct'))} {_clean(night_wind.get('power'))}"
+                    )
+
+                # 如果白天和夜间都为 9999
+                if (not day_w or day_w == "9999") and (not night_w or night_w == "9999"):
+                    lines.append(f"    该日期暂无天气数据")
+                break
+
+        if not found:
+            lines.append("")
+            lines.append(f"  📅 {_short_date(target_date)}")
+            lines.append(f"    ❌ 该日期不在预报范围内（预报仅支持未来7天）")
+
+    if not found_any and not matched_dates:
+        lines.append("")
+        lines.append(f"  ⚠️ 查询的日期均不在预报范围内")
+        # 显示可查询的日期范围
+        if detail:
+            available = [_short_date(d.get("date", "")) for d in detail]
+            lines.append(f"  可查询日期: {', '.join(available)}")
+
+    lines.append(sep)
+    return "\n".join(lines)
