@@ -4,11 +4,14 @@ NA = "N/A"
 
 
 def _clean(val, unit: str = "", na_val=NA) -> str:
-    """清洗 API 返回值：9999 / None / 空字符串 → N/A"""
-    if val is None or val == "" or val == "9999" or val == 9999:
+    """清洗 API 返回值：9999 / 9999.0 / None / 空字符串 → N/A"""
+    if val is None or val == "":
         return na_val
-    if isinstance(val, float) and val == 9999.0:
-        return na_val
+    try:
+        if float(val) == 9999.0:
+            return na_val
+    except (ValueError, TypeError):
+        pass
     return f"{val}{unit}"
 
 

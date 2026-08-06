@@ -36,6 +36,15 @@ class TestClean(unittest.TestCase):
 
     def test_dash_value(self):
         """'-' 是有效的天气描述，不应被过滤"""
+
+    def test_9999_string_float(self):
+        """字符串 "9999.0" 应被识别为无效值"""
+        self.assertEqual(_clean("9999.0"), "N/A")
+        self.assertEqual(_clean("9999.0", "hPa"), "N/A")
+
+    def test_9999_string_float_with_decimal(self):
+        """字符串 "9999.00" 也应被识别为无效值"""
+        self.assertEqual(_clean("9999.00"), "N/A")
         self.assertEqual(_clean("-"), "-")
 
 
