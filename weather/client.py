@@ -70,9 +70,11 @@ class NmcClient:
                 return city
 
         # 包含匹配（处理"北京市"→"北京"等情况）
+        # 只允许 city_label 是 city_name 的子串（用户输入比城市名长），
+        # 不允许反向（用户输入"山"不应匹配"山东"）
         for city in all_cities:
             city_label = city.get("city", "")
-            if city_name in city_label or city_label in city_name:
+            if city_label and city_label in city_name:
                 return city
 
         return None

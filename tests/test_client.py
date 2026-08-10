@@ -84,6 +84,48 @@ class TestNmcClient(unittest.TestCase):
 
     @patch.object(NmcClient, "get_provinces")
     @patch.object(NmcClient, "get_cities")
+    def test_find_stationid_no_false_match_short_input(self, mock_cities, mock_provinces):
+        """输入过短不应误命中：'山' 不应匹配 '山东' 或 '佛山'"""
+        mock_provinces.return_value = [{"code": "ASD", "name": "山东省"}]
+        mock_cities.return_value = [
+            {"code": "sd01", "city": "济南", "province": "山东省"},
+            {"code": "sd02", "city": "青岛", "province": "山东省"},
+            {"code": "fs01", "city": "佛山", "province": "广东省"},
+        ]
+        result = self.client.find_stationid("山")
+        self.assertIsNone(result)
+
+    @patch.object(NmcClient, "get_provinces")
+    @patch.object(NmcClient, "get_cities")
+    def test_find_stationid_no_false_match_partial(self, mock_cities, mock_provinces):
+        """'南京' 不应因 '南' 在 '济南' 中而误匹配"""
+        mock_provinces.return_value = [
+            {"code": "ASD", "name": "山东省"},
+            {"code": "AJS", "name": "江苏省"},
+        ]
+        mock_cities.side_effect = [
+            [{"code": "jn01", "city": "济南", "province": "山东省"}],
+            [{"code": "nj01", "city": "南京", "province": "江苏省"}],
+        ]
+        result = self.client.find_stationid("南京")
+        self.assertIsNotNone(result)
+        self.assertEqual(result["code"], "nj01")
+
+    @patch.object(NmcClient, "get_provinces")
+    @patch.object(NmcClient, "get_cities")
+    def test_find_stationid_empty_city_label_guard(self, mock_cities, mock_provinces):
+        """city_label 为空字符串时不应误匹配"""
+        mock_provinces.return_value = [{"code": "ABJ", "name": "北京市"}]
+        mock_cities.return_value = [
+            {"code": "bad0", "city": "", "province": "北京市"},
+            {"code": "Wqsps", "city": "北京", "province": "北京市"},
+        ]
+        result = self.client.find_stationid("北京市")
+        self.assertIsNotNone(result)
+        self.assertEqual(result["code"], "Wqsps")
+
+    @patch.object(NmcClient, "get_provinces")
+    @patch.object(NmcClient, "get_cities")
     def test_city_cache(self, mock_cities, mock_provinces):
         """第二次调用应使用缓存，不再请求 API"""
         mock_provinces.return_value = [{"code": "ABJ", "name": "北京市"}]
