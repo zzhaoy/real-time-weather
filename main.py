@@ -12,10 +12,14 @@
 import argparse
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from weather.formatter import format_weather, format_forecast_by_date, clean_value
 from weather.service import query_weather
+
+
+# 北京时间 (UTC+8)，nmc.cn API 返回的时间均为 CST
+CST = timezone(timedelta(hours=8))
 
 
 def parse_date(date_str: str) -> str | None:
@@ -31,7 +35,7 @@ def parse_date(date_str: str) -> str | None:
         try:
             dt = datetime.strptime(date_str, fmt)
             if fmt in ("%m-%d", "%m/%d"):
-                dt = dt.replace(year=datetime.now().year)
+                dt = dt.replace(year=datetime.now(CST).year)
             return dt.strftime("%Y-%m-%d")
         except ValueError:
             continue

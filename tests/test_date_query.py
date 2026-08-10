@@ -1,7 +1,7 @@
 """指定日期查询功能的单元测试"""
 
 import unittest
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from unittest.mock import patch
 from io import StringIO
 import sys
@@ -22,15 +22,23 @@ class TestParseDate(unittest.TestCase):
 
     def test_short_date_no_year(self):
         from main import parse_date
+        from main import CST
         result = parse_date("08-10")
-        expected_year = str(datetime.now().year)
+        expected_year = str(datetime.now(CST).year)
         self.assertEqual(result, f"{expected_year}-08-10")
 
     def test_short_slash_date(self):
         from main import parse_date
+        from main import CST
         result = parse_date("08/10")
-        expected_year = str(datetime.now().year)
+        expected_year = str(datetime.now(CST).year)
         self.assertEqual(result, f"{expected_year}-08-10")
+
+    def test_short_date_uses_cst_timezone(self):
+        """短日期补全年份应使用北京时间 (CST)，而非本地时区"""
+        from main import CST
+        # CST 应为 UTC+8
+        self.assertEqual(CST.utcoffset(None), timedelta(hours=8))
 
     def test_invalid_format(self):
         from main import parse_date
