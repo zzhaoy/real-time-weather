@@ -1,6 +1,6 @@
 # real-time-weather
 
-实时天气查询工具，数据来源为中央气象台 (nmc.cn)。可作为 CLI 使用，也可输出 JSON 供 trip-planner 等上层应用调用。
+实时天气查询工具，数据来源为中央气象台 (nmc.cn)。可作为 CLI 使用，也可输出 JSON 供 trip-planner 等上层应用调用，还支持作为 **MCP Server** 接入 AI 工具（如 Codex、Claude Desktop）。
 
 ## 功能
 
@@ -10,6 +10,7 @@
 - **指定日期查询天气**，支持单日期或多日期逗号分隔
 - 支持全国主要城市（含区县）
 - 支持机器可读 JSON 输出，便于服务间集成
+- **MCP Server 模式**，作为工具接入 AI 客户端
 
 ## 安装
 
@@ -70,6 +71,50 @@ weather = query_weather("北京")
 print(weather["data"]["real"]["weather"]["temperature"])
 ```
 
+## MCP Server 模式
+
+本项目可作为 MCP (Model Context Protocol) Server 运行，将天气查询能力暴露为 AI 工具。
+
+### 启动
+
+```bash
+python -m weather.mcp_server
+```
+
+### 暴露的工具
+
+| 工具 | 参数 | 说明 |
+|------|------|------|
+| `get_weather` | `city: str` | 查询城市实时天气 + 未来 7 天预报 |
+| `get_forecast` | `city: str`, `dates: str` | 按指定日期查询天气预报，支持逗号分隔多日期 |
+
+### Codex 配置
+
+在 `~/.codex/config.toml` 中添加：
+
+```toml
+[mcp_servers.real-time-weather]
+command = "python"
+args = ["-m", "weather.mcp_server"]
+cwd = "/path/to/real-time-weather"
+```
+
+### Claude Desktop 配置
+
+在 `claude_desktop_config.json` 中添加：
+
+```json
+{
+  "mcpServers": {
+    "real-time-weather": {
+      "command": "python",
+      "args": ["-m", "weather.mcp_server"],
+      "cwd": "/path/to/real-time-weather"
+    }
+  }
+}
+```
+
 ## 示例输出
 
 ### 实时天气
@@ -124,13 +169,16 @@ real-time-weather/
 │   ├── __init__.py
 │   ├── client.py        # nmc.cn API 客户端
 │   ├── formatter.py     # 天气数据格式化
-│   └── service.py       # 上层应用可调用的查询服务
+│   ├── service.py       # 上层应用可调用的查询服务
+│   └── mcp_server.py    # MCP Server（工具暴露层）
 └── tests/
     ├── __init__.py
     ├── test_client.py     # 客户端测试 (mock)
     ├── test_formatter.py  # 格式化测试
     ├── test_service.py    # 服务层测试
-    └── test_date_query.py # 指定日期查询测试
+    ├── test_date_query.py # 指定日期查询测试
+    ├── test_json_output.py # JSON 输出测试
+    └── test_mcp_server.py  # MCP Server 工具测试
 ```
 
 ## 数据来源
