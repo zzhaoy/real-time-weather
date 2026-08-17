@@ -137,16 +137,67 @@ cwd = "/path/to/real-time-weather"
 
 启动服务后，客户端通过 `http://<host>:<port>/mcp` 端点连接。单端点设计，支持无状态部署和负载均衡。
 
-```bash
-# 启动 HTTP 服务
-python -m weather.mcp_server -t streamable-http --host 0.0.0.0 --port 8000
+#### 启动服务
 
-# 验证服务是否可用
-curl -X POST http://localhost:8000/mcp \
+```bash
+python -m weather.mcp_server -t streamable-http --host 0.0.0.0 --port 8000
+```
+
+#### Codex 配置（streamable-http 模式）
+
+在 `~/.codex/config.toml` 中添加：
+
+```toml
+[mcp_servers.real-time-weather]
+url = "http://localhost:8000/mcp"
+```
+
+> 远程部署时将 `localhost:8000` 替换为实际地址和端口。
+
+#### 客户端调用流程
+
+streamable-http 协议是有状态的，必须按 **初始化 → 通知就绪 → 调用工具** 三步进行，每一步都需要携带前一步获取的 `Mcp-Session-Id`：
+
+```bash
+# ① 初始化握手，获取 session-id
+SESSION_ID=$(curl -s -D - -X POST http://localhost:8000/mcp \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' \
+  | grep -i 'mcp-session-id' | tr -d '\r\n' | awk '{print $2}')
+
+echo "Session: $SESSION_ID"
+
+# ② 发送 initialized 通知（携带 session-id）
+curl -s -X POST http://localhost:8000/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H "Mcp-Session-Id: $SESSION_ID" \
+  -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+
+# ③ 调用工具（携带 session-id）
+curl -s -X POST http://localhost:8000/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H "Mcp-Session-Id: $SESSION_ID" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_weather","arguments":{"city":"上海"}}}'
 ```
+
+#### 请求头要求
+
+| Header | 必填 | 说明 |
+|--------|------|------|
+| `Content-Type: application/json` | ✅ | JSON-RPC 请求体格式 |
+| `Accept: application/json, text/event-stream` | ✅ | 必须同时接受两种类型，否则返回 `406 Not Acceptable` |
+| `Mcp-Session-Id: <id>` | ✅（初始化之后） | 从 initialize 响应头获取，后续请求必须携带，否则返回 `400 Bad Request` |
+
+#### 常见报错
+
+| 报错 | 原因 | 解决 |
+|------|------|------|
+| `404 Not Found` | 请求路径不是 `/mcp`（如访问了 `/`） | 确保请求 `http://host:port/mcp` |
+| `406 Not Acceptable` | 缺少 `Accept` header | 添加 `-H 'Accept: application/json, text/event-stream'` |
+| `400 Bad Request: Missing session ID` | 缺少 `Mcp-Session-Id` header | 先执行 initialize 获取 session-id，后续请求携带该 header |
 
 ## 示例输出
 
