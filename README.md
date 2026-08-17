@@ -73,13 +73,31 @@ print(weather["data"]["real"]["weather"]["temperature"])
 
 ## MCP Server 模式
 
-本项目可作为 MCP (Model Context Protocol) Server 运行，将天气查询能力暴露为 AI 工具。
+本项目可作为 MCP (Model Context Protocol) Server 运行，将天气查询能力暴露为 AI 工具。支持两种传输方式：
+
+- **stdio**（默认）：本地进程通信，适合 CLI / IDE 集成
+- **streamable-http**：HTTP 单端点传输，适合远程部署
 
 ### 启动
 
 ```bash
+# stdio 模式（默认，本地 IDE 集成）
 python -m weather.mcp_server
+
+# Streamable HTTP 模式（远程部署）
+python -m weather.mcp_server -t streamable-http
+
+# 自定义地址和端口
+python -m weather.mcp_server -t streamable-http --host 0.0.0.0 --port 9000
 ```
+
+### 命令行参数
+
+| 参数 | 简写 | 默认值 | 说明 |
+|------|------|--------|------|
+| `--transport` | `-t` | `stdio` | 传输方式：`stdio` 或 `streamable-http` |
+| `--host` | — | `127.0.0.1` | HTTP 监听地址（仅 streamable-http 生效） |
+| `--port` | — | `8000` | HTTP 监听端口（仅 streamable-http 生效） |
 
 ### 暴露的工具
 
@@ -88,7 +106,7 @@ python -m weather.mcp_server
 | `get_weather` | `city: str` | 查询城市实时天气 + 未来 7 天预报 |
 | `get_forecast` | `city: str`, `dates: str` | 按指定日期查询天气预报，支持逗号分隔多日期 |
 
-### Codex 配置
+### Codex 配置（stdio 模式）
 
 在 `~/.codex/config.toml` 中添加：
 
@@ -99,7 +117,7 @@ args = ["-m", "weather.mcp_server"]
 cwd = "/path/to/real-time-weather"
 ```
 
-### Claude Desktop 配置
+### Claude Desktop 配置（stdio 模式）
 
 在 `claude_desktop_config.json` 中添加：
 
@@ -113,6 +131,21 @@ cwd = "/path/to/real-time-weather"
     }
   }
 }
+```
+
+### Streamable HTTP 远程部署
+
+启动服务后，客户端通过 `http://<host>:<port>/mcp` 端点连接。单端点设计，支持无状态部署和负载均衡。
+
+```bash
+# 启动 HTTP 服务
+python -m weather.mcp_server -t streamable-http --host 0.0.0.0 --port 8000
+
+# 验证服务是否可用
+curl -X POST http://localhost:8000/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
 ```
 
 ## 示例输出
