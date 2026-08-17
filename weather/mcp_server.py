@@ -17,6 +17,8 @@
     # Streamable HTTP 模式
     python -m weather.mcp_server --transport streamable-http
     python -m weather.mcp_server -t streamable-http --host 0.0.0.0 --port 9000
+
+兼容 mcp 1.x (FastMCP) 和 2.x (MCPServer)。
 """
 
 from __future__ import annotations
@@ -24,13 +26,19 @@ from __future__ import annotations
 import argparse
 import sys
 
-from mcp.server.fastmcp import FastMCP
+# ── 兼容 mcp 1.x / 2.x ──
+try:
+    from mcp.server.mcpserver import MCPServer as _Server
+    _MCP_MAJOR = 2
+except ImportError:
+    from mcp.server.fastmcp import FastMCP as _Server
+    _MCP_MAJOR = 1
 
 from weather.service import query_weather
 from weather.formatter import format_weather, format_forecast_by_date
 
 
-mcp = FastMCP("real-time-weather")
+mcp = _Server("real-time-weather")
 
 
 @mcp.tool()
@@ -137,10 +145,16 @@ def main() -> None:
     args = parse_args()
 
     if args.transport == "streamable-http":
-        mcp.settings.host = args.host
-        mcp.settings.port = args.port
-        print(f"🌐 Streamable HTTP 模式: http://{args.host}:{args.port}/mcp", file=sys.stderr)
-        mcp.run(transport="streamable-http")
+        if _MCP_MAJOR >= 2:
+            # mcp 2.x: run() 直接支持 host/port 关键字参数
+            print(f"🌐 Streamable HTTP 模式: http://{args.host}:{args.port}/mcp", file=sys.stderr)
+            mcp.run(transport="streamable-http", host=args.host, port=args.port)
+        else:
+            # mcp 1.x: 需要通过 settings 配置 host/port
+            mcp.settings.host = args.host
+            mcp.settings.port = args.port
+            print(f"🌐 Streamable HTTP 模式: http://{args.host}:{args.port}/mcp", file=sys.stderr)
+            mcp.run(transport="streamable-http")
     else:
         mcp.run(transport="stdio")
 
