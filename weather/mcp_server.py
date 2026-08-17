@@ -41,7 +41,7 @@ from weather.formatter import format_weather, format_forecast_by_date
 mcp = _Server("real-time-weather")
 
 
-@mcp.tool()
+@mcp.tool(structured_output=False)
 def get_weather(city: str) -> str:
     """查询城市实时天气和未来7天预报
 
@@ -61,7 +61,7 @@ def get_weather(city: str) -> str:
     return format_weather(result["data"])
 
 
-@mcp.tool()
+@mcp.tool(structured_output=False)
 def get_forecast(city: str, dates: str) -> str:
     """查询城市指定日期的天气预报
 
