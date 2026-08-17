@@ -6,16 +6,28 @@
     - get_weather: 查询城市实时天气 + 未来 7 天预报
     - get_forecast: 按指定日期查询天气预报
 
-传输: stdio
-启动: python -m weather.mcp_server
+传输方式:
+    - stdio (默认): 本地进程通信，适合 CLI / IDE 集成
+    - streamable-http: HTTP 单端点传输，适合远程部署
+
+启动:
+    # stdio 模式（默认）
+    python -m weather.mcp_server
+
+    # Streamable HTTP 模式
+    python -m weather.mcp_server --transport streamable-http
+    python -m weather.mcp_server -t streamable-http --host 0.0.0.0 --port 9000
 """
 
 from __future__ import annotations
 
+import argparse
+import sys
+
 from mcp.server.fastmcp import FastMCP
 
 from weather.service import query_weather
-from weather.formatter import format_weather, format_forecast_by_date, clean_value
+from weather.formatter import format_weather, format_forecast_by_date
 
 
 mcp = FastMCP("real-time-weather")
@@ -87,5 +99,51 @@ def get_forecast(city: str, dates: str) -> str:
     return invalid_note + forecast_text
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="real-time-weather MCP Server",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""\
+示例:
+  # stdio 模式（默认，本地 IDE 集成）
+  python -m weather.mcp_server
+
+  # Streamable HTTP 模式
+  python -m weather.mcp_server -t streamable-http
+  python -m weather.mcp_server -t streamable-http --host 0.0.0.0 --port 9000
+""",
+    )
+    parser.add_argument(
+        "-t", "--transport",
+        choices=["stdio", "streamable-http"],
+        default="stdio",
+        help="传输方式 (默认: stdio)",
+    )
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="HTTP 监听地址，仅 streamable-http 模式生效 (默认: 127.0.0.1)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="HTTP 监听端口，仅 streamable-http 模式生效 (默认: 8000)",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+
+    if args.transport == "streamable-http":
+        mcp.settings.host = args.host
+        mcp.settings.port = args.port
+        print(f"🌐 Streamable HTTP 模式: http://{args.host}:{args.port}/mcp", file=sys.stderr)
+        mcp.run(transport="streamable-http")
+    else:
+        mcp.run(transport="stdio")
+
+
 if __name__ == "__main__":
-    mcp.run()
+    main()

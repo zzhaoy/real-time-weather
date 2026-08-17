@@ -1,9 +1,9 @@
 """MCP Server 工具的单元测试（使用 mock，不依赖网络）"""
 
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
-from weather.mcp_server import get_weather, get_forecast
+from weather.mcp_server import get_weather, get_forecast, parse_args
 
 
 # ── 测试用 mock 数据 ──
@@ -133,6 +133,76 @@ class TestGetForecast(unittest.TestCase):
         result = get_forecast("火星", "2026-08-17")
         self.assertIn("❌", result)
         self.assertIn("未找到城市", result)
+
+
+class TestParseArgs(unittest.TestCase):
+    """测试命令行参数解析"""
+
+    def test_default_transport_stdio(self):
+        """无参数时默认 stdio"""
+        with patch("sys.argv", ["mcp_server"]):
+            args = parse_args()
+        self.assertEqual(args.transport, "stdio")
+
+    def test_short_flag_streamable_http(self):
+        """-t streamable-http"""
+        with patch("sys.argv", ["mcp_server", "-t", "streamable-http"]):
+            args = parse_args()
+        self.assertEqual(args.transport, "streamable-http")
+
+    def test_long_flag_streamable_http(self):
+        """--transport streamable-http"""
+        with patch("sys.argv", ["mcp_server", "--transport", "streamable-http"]):
+            args = parse_args()
+        self.assertEqual(args.transport, "streamable-http")
+
+    def test_custom_host_and_port(self):
+        """--host 和 --port 自定义"""
+        with patch("sys.argv", ["mcp_server", "-t", "streamable-http", "--host", "0.0.0.0", "--port", "9000"]):
+            args = parse_args()
+        self.assertEqual(args.host, "0.0.0.0")
+        self.assertEqual(args.port, 9000)
+
+    def test_default_host_and_port(self):
+        """streamable-http 默认 host/port"""
+        with patch("sys.argv", ["mcp_server", "-t", "streamable-http"]):
+            args = parse_args()
+        self.assertEqual(args.host, "127.0.0.1")
+        self.assertEqual(args.port, 8000)
+
+    def test_invalid_transport_rejected(self):
+        """无效传输方式应被 argparse 拒绝"""
+        with patch("sys.argv", ["mcp_server", "-t", "websocket"]):
+            with self.assertRaises(SystemExit):
+                parse_args()
+
+    def test_invalid_port_rejected(self):
+        """非数字端口应被 argparse 拒绝"""
+        with patch("sys.argv", ["mcp_server", "--port", "abc"]):
+            with self.assertRaises(SystemExit):
+                parse_args()
+
+
+class TestMainEntry(unittest.TestCase):
+    """测试 main() 入口函数的行为"""
+
+    @patch("weather.mcp_server.mcp")
+    def test_main_stdio(self, mock_mcp):
+        """stdio 模式应调用 mcp.run(transport='stdio')"""
+        with patch("sys.argv", ["mcp_server"]):
+            from weather.mcp_server import main
+            main()
+        mock_mcp.run.assert_called_once_with(transport="stdio")
+
+    @patch("weather.mcp_server.mcp")
+    def test_main_streamable_http_applies_settings(self, mock_mcp):
+        """streamable-http 模式应设置 host/port 再调用 run"""
+        with patch("sys.argv", ["mcp_server", "-t", "streamable-http", "--host", "0.0.0.0", "--port", "9000"]):
+            from weather.mcp_server import main
+            main()
+        mock_mcp.settings.host = "0.0.0.0"
+        mock_mcp.settings.port = 9000
+        mock_mcp.run.assert_called_once_with(transport="streamable-http")
 
 
 if __name__ == "__main__":
